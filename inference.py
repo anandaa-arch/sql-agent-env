@@ -7,16 +7,15 @@ stdout logs in [START] / [STEP] / [END] format as required by the
 OpenEnv evaluation harness.
 
 Environment variables required:
-  API_BASE_URL   e.g. https://api.openai.com/v1
-  MODEL_NAME     e.g. gpt-4o-mini
-  HF_TOKEN       your HF / OpenAI API key
+  API_BASE_URL   e.g. https://api.groq.com/openai/v1
+  MODEL_NAME     e.g. llama-3.1-8b-instant
+  HF_TOKEN       your Groq / OpenAI API key
   ENV_BASE_URL   base URL of the running OpenEnv server (default: http://localhost:7860)
 
 Usage:
   python inference.py
 """
 
-import asyncio
 import json
 import os
 import sys
@@ -28,10 +27,10 @@ from openai import OpenAI
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME   = os.environ.get("MODEL_NAME",   "gpt-4o-mini")
-API_KEY      = os.environ.get("HF_TOKEN",     "")
-ENV_BASE_URL = os.environ.get("ENV_BASE_URL", "http://localhost:7860")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.groq.com/openai/v1")
+MODEL_NAME   = os.getenv("MODEL_NAME",   "llama-3.1-8b-instant")
+HF_TOKEN     = os.getenv("HF_TOKEN")
+ENV_BASE_URL = os.getenv("ENV_BASE_URL", "http://localhost:7860")
 
 MAX_STEPS_PER_TASK = 10
 SUCCESS_THRESHOLD  = 0.8
@@ -53,7 +52,7 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
     print(json.dumps({
         "event":   "STEP",
         "step":    step,
-        "action":  action[:500],  # truncate long queries for readability
+        "action":  action[:500],
         "reward":  reward,
         "done":    done,
         "error":   error,
@@ -129,7 +128,7 @@ def get_model_action(
         obs_text += "WARNING: Few steps left — consider submitting now.\n"
 
     messages = [{"role": "user", "content": obs_text}]
-    for h in history[-4:]:   # last 4 turns for context
+    for h in history[-4:]:
         messages.insert(-1, {"role": "assistant", "content": h})
 
     try:
@@ -140,7 +139,6 @@ def get_model_action(
             max_tokens=512,
         )
         raw = resp.choices[0].message.content.strip()
-        # Strip markdown fences if present
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -175,12 +173,12 @@ def env_step(http: httpx.Client, session_id: str, action: Dict) -> Dict[str, Any
 def run_task(client: OpenAI, http: httpx.Client, task_id: str) -> float:
     log_start(task=task_id, env="sql-agent-env", model=MODEL_NAME)
 
-    result    = env_reset(http, task_id)
+    result     = env_reset(http, task_id)
     session_id = result["session_id"]
     obs        = result["observation"]
 
-    history  : List[str] = []
-    rewards  : List[float] = []
+    history     : List[str] = []
+    rewards     : List[float] = []
     steps_taken = 0
     score       = 0.0
     success     = False
@@ -191,7 +189,6 @@ def run_task(client: OpenAI, http: httpx.Client, task_id: str) -> float:
                 break
 
             action = get_model_action(client, obs, history)
-            # Ensure valid mode
             if action.get("mode") not in ("sql", "submit"):
                 action["mode"] = "sql"
             if not action.get("query"):
@@ -215,7 +212,6 @@ def run_task(client: OpenAI, http: httpx.Client, task_id: str) -> float:
                 score = info.get("final_score", reward)
                 break
 
-        # If we exited without submitting, score is best seen so far
         if not score and rewards:
             score = max(rewards)
 
@@ -223,7 +219,6 @@ def run_task(client: OpenAI, http: httpx.Client, task_id: str) -> float:
         success = score >= SUCCESS_THRESHOLD
 
     finally:
-        # cleanup session
         try:
             http.delete(f"{ENV_BASE_URL}/session", headers={"session-id": session_id})
         except Exception:
@@ -234,13 +229,12 @@ def run_task(client: OpenAI, http: httpx.Client, task_id: str) -> float:
 
 
 def main():
-    if not API_KEY:
+    if not HF_TOKEN:
         print("[ERROR] HF_TOKEN environment variable not set.", file=sys.stderr)
         sys.exit(1)
 
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
-    # Wait for environment to be ready
     with httpx.Client(timeout=60.0) as http:
         for attempt in range(10):
             try:
