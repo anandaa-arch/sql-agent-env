@@ -1,0 +1,88 @@
+name: sql-agent-env
+version: "1.0.0"
+description: >
+  An OpenEnv environment that trains and evaluates AI agents on SQL query generation.
+  Agents must write correct SQLite queries given natural-language task descriptions,
+  table schemas, and sample data. Covers JOIN queries, aggregation with GROUP BY,
+  and advanced window functions across three tasks of increasing difficulty.
+
+tags:
+  - openenv
+  - sql
+  - data-engineering
+  - nlp-to-sql
+  - real-world
+
+author: sql-agent-env-team
+
+tasks:
+  - id: task_1_easy
+    difficulty: easy
+    description: >
+      Find customers who have placed at least one order.
+      Requires a JOIN and DISTINCT on two tables.
+    max_steps: 10
+    reward_range: [0.0, 1.0]
+
+  - id: task_2_medium
+    difficulty: medium
+    description: >
+      Per-plan usage report: total events in last 90 days and average per user.
+      Requires LEFT JOIN, date filtering, GROUP BY, and ROUND.
+    max_steps: 12
+    reward_range: [0.0, 1.0]
+
+  - id: task_3_hard
+    difficulty: hard
+    description: >
+      Account balance milestones using window functions.
+      Requires CTEs, SUM(...) OVER (...), and multi-step aggregation.
+    max_steps: 15
+    reward_range: [0.0, 1.0]
+
+observation:
+  type: object
+  properties:
+    task_id: string
+    task_description: string
+    difficulty: string
+    schema_info: object
+    sample_data: object
+    last_query: string
+    last_result: object
+    steps_taken: integer
+    max_steps: integer
+    hint: string
+    done: boolean
+
+action:
+  type: object
+  properties:
+    mode:
+      type: string
+      enum: [sql, submit]
+    query:
+      type: string
+  required: [mode, query]
+
+reward:
+  type: object
+  properties:
+    score:
+      type: number
+      minimum: 0.0
+      maximum: 1.0
+    breakdown: object
+    feedback: string
+    is_final: boolean
+
+endpoints:
+  reset: "POST /reset?task_id={task_id}"
+  step:  "POST /step  (header: session-id)"
+  state: "GET  /state (header: session-id)"
+
+environment:
+  language: python
+  runtime: python3.11
+  framework: fastapi
+  database: sqlite3 (in-memory per session)

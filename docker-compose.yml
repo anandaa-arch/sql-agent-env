@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  # ── The OpenEnv server ────────────────────────────────────────────────────
+  env:
+    build: .
+    container_name: sql-agent-env
+    ports:
+      - "7860:7860"
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:7860/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── Baseline inference runner ─────────────────────────────────────────────
+  # Runs after env is healthy, then exits.
+  inference:
+    build: .
+    container_name: sql-agent-inference
+    depends_on:
+      env:
+        condition: service_healthy
+    environment:
+      - API_BASE_URL=${API_BASE_URL:-https://api.openai.com/v1}
+      - MODEL_NAME=${MODEL_NAME:-gpt-4o-mini}
+      - HF_TOKEN=${HF_TOKEN:?HF_TOKEN must be set}
+      - ENV_BASE_URL=http://env:7860
+      - PYTHONUNBUFFERED=1
+    command: ["python", "inference.py"]
+    profiles:
+      - inference   # only starts with: docker compose --profile inference up
