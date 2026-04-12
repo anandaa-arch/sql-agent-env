@@ -39,34 +39,40 @@ TASKS = ["task_1_easy", "task_2_medium", "task_3_hard"]
 # ── Structured log helpers ─────────────────────────────────────────────────────
 
 def log_start(task: str, env: str, model: str) -> None:
-    print(json.dumps({
-        "event":      "START",
-        "task":       task,
-        "env":        env,
-        "model":      model,
-        "timestamp":  time.time(),
-    }), flush=True)
+    data = {
+        "event":     "START",
+        "task":      task,
+        "env":       env,
+        "model":     model,
+        "timestamp": time.time(),
+    }
+    print(f"[START] task={task} env={env} model={model}", flush=True)
+    print(json.dumps(data), flush=True)
 
 
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
-    print(json.dumps({
-        "event":   "STEP",
-        "step":    step,
-        "action":  action[:500],
-        "reward":  reward,
-        "done":    done,
-        "error":   error,
-    }), flush=True)
+    data = {
+        "event":  "STEP",
+        "step":   step,
+        "action": action[:500],
+        "reward": reward,
+        "done":   done,
+        "error":  error,
+    }
+    print(f"[STEP] step={step} reward={reward} done={done}", flush=True)
+    print(json.dumps(data), flush=True)
 
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
-    print(json.dumps({
+    data = {
         "event":   "END",
         "success": success,
         "steps":   steps,
         "score":   score,
         "rewards": rewards,
-    }), flush=True)
+    }
+    print(f"[END] success={success} steps={steps} score={score}", flush=True)
+    print(json.dumps(data), flush=True)
 
 
 # ── LLM helper ────────────────────────────────────────────────────────────────
