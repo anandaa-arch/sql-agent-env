@@ -128,15 +128,15 @@ def grade_task1(conn: sqlite3.Connection, submitted_sql: str) -> Tuple[float, st
     agent_rows, err = _run_query(conn, submitted_sql)
 
     if err:
-        return 0.0, f"Query error: {err}"
+        return 0.01, f"Query error: {err}"
     if agent_rows is None:
-        return 0.0, "No result returned."
+        return 0.01, "No result returned."
 
     expected_norm = _normalise(expected_rows)
     agent_norm    = _normalise(agent_rows)
 
     if agent_norm == expected_norm:
-        return 1.0, "Perfect! Correct customers returned."
+        return 0.99, "Perfect! Correct customers returned."
 
     # Partial credit
     expected_set = set(expected_norm)
@@ -146,7 +146,7 @@ def grade_task1(conn: sqlite3.Connection, submitted_sql: str) -> Tuple[float, st
     recall       = correct_hits / len(expected_set) if expected_set else 0.0
 
     if precision + recall == 0:
-        return 0.0, "No overlap with expected results."
+        return 0.01, "No overlap with expected results."
 
     f1 = 2 * precision * recall / (precision + recall)
     score = round(f1 * 0.8, 3)   # cap partial at 0.8 to incentivise full solve
@@ -275,9 +275,9 @@ def grade_task2(conn: sqlite3.Connection, submitted_sql: str) -> Tuple[float, st
     agent_rows, err = _run_query(conn, submitted_sql)
 
     if err:
-        return 0.0, f"Query error: {err}"
+        return 0.01, f"Query error: {err}"
     if not agent_rows:
-        return 0.0, "Empty result."
+        return 0.01, "Empty result."
 
     # Build comparable dicts
     def to_dict(rows):
@@ -287,7 +287,7 @@ def grade_task2(conn: sqlite3.Connection, submitted_sql: str) -> Tuple[float, st
     got = to_dict(agent_rows)
 
     if not got:
-        return 0.0, "Could not parse result rows."
+        return 0.01, "Could not parse result rows."
 
     correct_plans = 0
     partial_plans = 0
@@ -314,7 +314,7 @@ def grade_task2(conn: sqlite3.Connection, submitted_sql: str) -> Tuple[float, st
     score = round(score, 3)
 
     if score == 1.0:
-        return 1.0, "Perfect aggregation across all plans!"
+        return 0.99, "Perfect aggregation across all plans!"
     return score, " ".join(feedback_parts) if feedback_parts else f"Score: {score}"
 
 
@@ -452,9 +452,9 @@ def grade_task3(conn: sqlite3.Connection, submitted_sql: str) -> Tuple[float, st
     agent_rows, err  = _run_query(conn, submitted_sql)
 
     if err:
-        return 0.0, f"Query error: {err}"
+        return 0.01, f"Query error: {err}"
     if not agent_rows:
-        return 0.0, "Empty result."
+        return 0.01, "Empty result."
 
     # expected: {holder: (first_milestone_date|None, total_credits)}
     def parse(rows):
@@ -475,7 +475,7 @@ def grade_task3(conn: sqlite3.Connection, submitted_sql: str) -> Tuple[float, st
     got = parse(agent_rows)
 
     if not got:
-        return 0.0, "Could not parse output."
+        return 0.01, "Could not parse output."
 
     scores = []
     feedback_parts = []
@@ -498,7 +498,7 @@ def grade_task3(conn: sqlite3.Connection, submitted_sql: str) -> Tuple[float, st
     score = round(sum(scores) / len(exp), 3) if exp else 0.0
 
     if score == 1.0:
-        return 1.0, "Perfect! Correct milestones and credits for all accounts."
+        return 0.99, "Perfect! Correct milestones and credits for all accounts."
     return score, " ".join(feedback_parts) if feedback_parts else f"Partial score: {score}"
 
 
